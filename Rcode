@@ -1,0 +1,41 @@
+#R-code for fitting the meta-analytic model in rstan
+
+    data {
+      int N;
+      real<lower=0,upper=1> theta_obs[N];
+      real<lower=0> kappa_obs[N];
+    }
+    parameters {
+      real<lower=0,upper=1> theta_true[N];
+      real<lower=0,upper=1> theta_mean;
+      real<lower=1> kappa_between; 
+    }
+    model {
+      kappa_between ~ pareto(1.0, 1.5);
+      theta_true ~ beta_proportion(theta_mean, kappa_between);
+      theta_obs ~ beta_proportion(theta_true, kappa_obs);
+    }
+    generated quantities {
+      real<lower=0,upper=1> sd_between;
+      sd_between = sqrt(theta_mean*(1-theta_mean)/(kappa_between+1)); 
+    }
+data {
+      int N;
+      vector<lower=0,upper=1>[N] theta_obs;
+      vector<lower=0,upper=1>[N] se_obs;
+    }
+    parameters {
+      vector[N] theta_standard;
+      real<lower=0,upper=1> theta_mean;
+      real<lower=0,upper=1> sd_between; 
+    }
+    transformed parameters {
+      vector[N] theta_true; 
+      // vector<lower=0,upper=1>[N] theta_true; results in many divergent transitions
+      theta_true = theta_mean + sd_between*theta_standard;
+    }
+    model {
+      theta_standard ~ std_normal();
+      theta_obs ~ normal(theta_true, se_obs);
+    }
+
